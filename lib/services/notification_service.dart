@@ -1,10 +1,14 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_10y.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter/services.dart';
+
 
 class NotificationService {
   static final NotificationService instance = NotificationService._();
   NotificationService._();
+
+  static const MethodChannel _serviceChannel = MethodChannel('com.yapmodoro.app/timer_service');
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -58,6 +62,8 @@ class NotificationService {
     required DateTime endTime,
     required bool isCountdown,
   }) async {
+    final int timeoutMs = endTime.difference(DateTime.now()).inMilliseconds;
+
     final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'pomodoro_timer',
       'Pomodoro Active Timer',
@@ -71,18 +77,43 @@ class NotificationService {
       usesChronometer: true,
       chronometerCountDown: isCountdown,
       when: endTime.millisecondsSinceEpoch,
+      timeoutAfter: timeoutMs > 0 ? timeoutMs : 1,
     );
 
     final NotificationDetails notificationDetails = NotificationDetails(
       android: androidDetails,
     );
 
-    await _notificationsPlugin.show(
-      888, // Constant ID for active timer
-      title,
-      body,
-      notificationDetails,
-    );
+    final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      try {
+        final bool isBreak = title.toLowerCase().contains("break");
+        await _serviceChannel.invokeMethod('startService', {
+          'title': title,
+          'body': body,
+          'endTimeMillis': endTime.millisecondsSinceEpoch,
+          'isCountdown': isCountdown,
+          'alarmTitle': isBreak ? "Break Completed!" : "Focus Segment Completed!",
+          'alarmBody': isBreak ? "Ready to start focusing again?" : "Time to take a well-deserved break!",
+        });
+      } catch (e) {
+        await androidPlugin.startForegroundService(
+          888,
+          title,
+          body,
+          notificationDetails: androidDetails,
+          foregroundServiceTypes: {AndroidServiceForegroundType.foregroundServiceTypeDataSync},
+        );
+      }
+    } else {
+      await _notificationsPlugin.show(
+        888, // Constant ID for active timer
+        title,
+        body,
+        notificationDetails,
+      );
+    }
   }
 
   // Show static paused notification
@@ -90,6 +121,16 @@ class NotificationService {
     required String title,
     required String timeRemainingText,
   }) async {
+    final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      try {
+        await _serviceChannel.invokeMethod('stopService');
+      } catch (e) {
+        await androidPlugin.stopForegroundService();
+      }
+    }
+
     final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'pomodoro_timer',
       'Pomodoro Active Timer',
@@ -143,7 +184,7 @@ class NotificationService {
       999, // Constant ID for completion alarm
       title,
       body,
-      tz.TZDateTime.from(endTime, tz.local),
+      tz.TZDateTime.now(tz.local).add(endTime.difference(DateTime.now())),
       notificationDetails,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
@@ -158,6 +199,15 @@ class NotificationService {
 
   // Cancel notifications
   Future<void> cancelTimerNotifications() async {
+    final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      try {
+        await _serviceChannel.invokeMethod('stopService');
+      } catch (e) {
+        await androidPlugin.stopForegroundService();
+      }
+    }
     await _notificationsPlugin.cancel(888);
     await _notificationsPlugin.cancel(999);
   }
