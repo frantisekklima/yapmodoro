@@ -89,11 +89,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 bottom: false,
                 child: PageView(
                   controller: _pageController,
-                  onPageChanged: (index) {
-                    setState(() {
-                      _currentIndex = index;
-                    });
-                  },
                   physics: const NeverScrollableScrollPhysics(),
                   children: _pages,
                 ),
@@ -104,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
           bottomNavigationBar: NavigationBarM3E(
             selectedIndex: _currentIndex,
             onDestinationSelected: _onTabTapped,
+            padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 20.0),
             destinations: const [
               NavigationDestinationM3E(
                 icon: Icon(Icons.hourglass_empty_rounded),

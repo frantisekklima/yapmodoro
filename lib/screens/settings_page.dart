@@ -460,7 +460,7 @@ class SettingsPage extends StatelessWidget {
               thumbShape: const M3ExpressiveSliderThumbShape(width: 4.0, height: 36.0, radius: 2.0),
               activeTickMarkColor: Colors.white,
               inactiveTickMarkColor: primaryColor,
-              tickMarkShape: const RoundSliderTickMarkShape(tickMarkRadius: 2.0),
+              tickMarkShape: const M3ExpressiveSliderTickMarkShape(tickMarkRadius: 2.0),
             ),
             child: Slider(
               value: provider.classicLongBreakInterval.toDouble(),
@@ -561,7 +561,7 @@ class SettingsPage extends StatelessWidget {
               thumbShape: const M3ExpressiveSliderThumbShape(width: 4.0, height: 36.0, radius: 2.0),
               activeTickMarkColor: Colors.white,
               inactiveTickMarkColor: primaryColor,
-              tickMarkShape: const RoundSliderTickMarkShape(tickMarkRadius: 2.0),
+              tickMarkShape: const M3ExpressiveSliderTickMarkShape(tickMarkRadius: 2.0),
             ),
             child: Slider(
               value: provider.dynamicDivisor,
@@ -1043,3 +1043,48 @@ class M3ExpressiveSliderTrackShape extends SliderTrackShape {
     }
   }
 }
+
+/// Custom Material 3 Expressive Slider Tick Mark Shape
+/// Hides the tick mark when it resides exactly under or very close to the active thumb line.
+class M3ExpressiveSliderTickMarkShape extends SliderTickMarkShape {
+  final double tickMarkRadius;
+
+  const M3ExpressiveSliderTickMarkShape({this.tickMarkRadius = 2.0});
+
+  @override
+  Size getPreferredSize({
+    required SliderThemeData sliderTheme,
+    required bool isEnabled,
+  }) {
+    return Size.fromRadius(tickMarkRadius);
+  }
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required Animation<double> enableAnimation,
+    required Offset thumbCenter,
+    required bool isEnabled,
+    required TextDirection textDirection,
+  }) {
+    // Hide tick mark if it's too close to the thumb center (e.g. within 6.0 dp)
+    if ((center.dx - thumbCenter.dx).abs() < 6.0) {
+      return;
+    }
+
+    final Canvas canvas = context.canvas;
+    final Paint paint = Paint()
+      ..color = isEnabled
+          ? (center.dx <= thumbCenter.dx
+              ? (sliderTheme.activeTickMarkColor ?? Colors.white)
+              : (sliderTheme.inactiveTickMarkColor ?? Colors.blue))
+          : (sliderTheme.disabledInactiveTickMarkColor ?? Colors.grey)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(center, tickMarkRadius, paint);
+  }
+}
+
