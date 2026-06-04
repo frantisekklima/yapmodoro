@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:m3e_collection/m3e_collection.dart';
 import '../providers/timer_provider.dart';
 import 'timer_page.dart';
 import 'stats_page.dart';
@@ -100,86 +101,29 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           // Floating Solid Material 3 Bottom Navigation Bar
-          bottomNavigationBar: _buildExpressiveNavigationBar(theme, isDark, modePrimaryColor, isBreak),
+          bottomNavigationBar: NavigationBarM3E(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: _onTabTapped,
+            destinations: const [
+              NavigationDestinationM3E(
+                icon: Icon(Icons.hourglass_empty_rounded),
+                selectedIcon: Icon(Icons.hourglass_full_rounded),
+                label: "Timer",
+              ),
+              NavigationDestinationM3E(
+                icon: Icon(Icons.bar_chart_outlined),
+                selectedIcon: Icon(Icons.bar_chart_rounded),
+                label: "Stats",
+              ),
+              NavigationDestinationM3E(
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings_rounded),
+                label: "Settings",
+              ),
+            ],
+          ),
         );
       },
-    );
-  }
-
-  Widget _buildExpressiveNavigationBar(ThemeData theme, bool isDark, Color activeColor, bool isBreak) {
-    // Dynamic solid background matching theme and phase (slightly lighter/darker flat shade)
-    final Color navBg = isDark
-        ? Color.alphaBlend(activeColor.withOpacity(0.08), theme.colorScheme.surfaceVariant)
-        : Colors.white;
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 20.0),
-      child: Container(
-        height: 76.0,
-        decoration: BoxDecoration(
-          color: navBg,
-          borderRadius: BorderRadius.circular(38.0), // Fully rounded pill shape
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
-              blurRadius: 20,
-              spreadRadius: -4,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(0, Icons.hourglass_empty_rounded, Icons.hourglass_full_rounded, "Timer", theme, isDark, activeColor),
-            _buildNavItem(1, Icons.bar_chart_outlined, Icons.bar_chart_rounded, "Stats", theme, isDark, activeColor),
-            _buildNavItem(2, Icons.settings_outlined, Icons.settings_rounded, "Settings", theme, isDark, activeColor),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData outlineIcon, IconData filledIcon, String label, ThemeData theme, bool isDark, Color activeColor) {
-    final isSelected = _currentIndex == index;
-    final Color itemColor = isSelected ? activeColor : theme.colorScheme.onSurface.withOpacity(0.5);
-
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _onTabTapped(index),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 6.0),
-              decoration: BoxDecoration(
-                color: isSelected 
-                    ? activeColor.withOpacity(isDark ? 0.16 : 0.10) 
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(20.0), // Rounded active indicator pill
-              ),
-              child: Icon(
-                isSelected ? filledIcon : outlineIcon,
-                color: itemColor,
-                size: 24.0,
-              ),
-            ),
-            const SizedBox(height: 4.0),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? activeColor : theme.colorScheme.onSurface.withOpacity(0.6),
-                fontSize: 11.0,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

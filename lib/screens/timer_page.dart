@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:button_m3e/button_m3e.dart';
+import 'package:m3e_collection/m3e_collection.dart';
 import '../providers/timer_provider.dart';
 import '../widgets/circular_progress.dart';
 
@@ -146,13 +146,24 @@ class _TimerPageState extends State<TimerPage> {
 
 
 
-        return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+        return Theme(
+          data: theme.copyWith(
+            colorScheme: theme.colorScheme.copyWith(
+              primary: modePrimaryColor,
+              secondary: modePrimaryColor,
+              primaryContainer: isBreak ? theme.colorScheme.tertiaryContainer : theme.colorScheme.primaryContainer,
+              onPrimaryContainer: isBreak ? theme.colorScheme.onTertiaryContainer : theme.colorScheme.onPrimaryContainer,
+              secondaryContainer: isBreak ? theme.colorScheme.tertiaryContainer : theme.colorScheme.secondaryContainer,
+              onSecondaryContainer: isBreak ? theme.colorScheme.onTertiaryContainer : theme.colorScheme.onSecondaryContainer,
+            ),
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 const SizedBox(height: 10),
                 // Ordinal Session Indicator - fun typography
                 RichText(
@@ -215,17 +226,12 @@ class _TimerPageState extends State<TimerPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (showAdjustButtons) ...[
-                            IconButton(
+                            IconButtonM3E(
                               onPressed: () => provider.addMinute(),
                               icon: const Icon(Icons.add_rounded, size: 20.0),
-                              style: IconButton.styleFrom(
-                                backgroundColor: adjustButtonBg,
-                                foregroundColor: modePrimaryColor,
-                                minimumSize: const Size(40, 40),
-                                maximumSize: const Size(40, 40),
-                                padding: EdgeInsets.zero,
-                                shape: const CircleBorder(),
-                              ),
+                              variant: IconButtonM3EVariant.tonal,
+                              size: IconButtonM3ESize.sm,
+                              shape: IconButtonM3EShapeVariant.round,
                             ),
                             const SizedBox(height: 6),
                           ],
@@ -240,17 +246,12 @@ class _TimerPageState extends State<TimerPage> {
                           ),
                           if (showAdjustButtons) ...[
                             const SizedBox(height: 6),
-                            IconButton(
+                            IconButtonM3E(
                               onPressed: () => provider.subtractMinute(),
                               icon: const Icon(Icons.remove_rounded, size: 20.0),
-                              style: IconButton.styleFrom(
-                                backgroundColor: adjustButtonBg,
-                                foregroundColor: modePrimaryColor,
-                                minimumSize: const Size(40, 40),
-                                maximumSize: const Size(40, 40),
-                                padding: EdgeInsets.zero,
-                                shape: const CircleBorder(),
-                              ),
+                              variant: IconButtonM3EVariant.tonal,
+                              size: IconButtonM3ESize.sm,
+                              shape: IconButtonM3EShapeVariant.round,
                             ),
                           ],
                         ],
@@ -297,9 +298,10 @@ class _TimerPageState extends State<TimerPage> {
               ],
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 
   // Pill Mode Switcher Widget (No glassmorphism, solid M3 surfaces, no border)
@@ -435,93 +437,56 @@ class _TimerPageState extends State<TimerPage> {
     final state = provider.state;
     final isPaused = state == AppTimerState.paused;
 
-    final Color buttonBgActive = primaryColor;
-    final Color buttonBgInactive = theme.brightness == Brightness.dark
-        ? theme.colorScheme.surfaceVariant
-        : primaryColor.withOpacity(0.08);
-
     return Container(
       margin: const EdgeInsets.only(bottom: 24.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // 1. LEFT Button: Stop (Symmetric rounded circle, inactive background, no glow)
-          IconButton(
+          // 1. LEFT Button: Stop (M3E Tonal, round shape)
+          IconButtonM3E(
             onPressed: () => provider.stopTimer(),
             icon: const Icon(Icons.stop_rounded, size: 28.0),
-            style: IconButton.styleFrom(
-              backgroundColor: buttonBgInactive,
-              foregroundColor: primaryColor,
-              minimumSize: const Size(64, 64),
-              maximumSize: const Size(64, 64),
-              shape: const CircleBorder(),
-            ),
+            variant: IconButtonM3EVariant.tonal,
+            size: IconButtonM3ESize.lg,
+            shape: IconButtonM3EShapeVariant.round,
           ),
           const SizedBox(width: 8),
 
-          // 2. CENTER Button: Primary Action (Symmetric rounded rectangle, active accent background, no glow)
+          // 2. CENTER Button: Primary Action (M3E Filled, square shape)
           if (isWork)
             if (provider.mode == AppTimerMode.dynamicMode)
-              FilledButton(
+              IconButtonM3E(
                 onPressed: () => provider.triggerDynamicBreak(),
-                child: const Icon(Icons.coffee_rounded, size: 28.0),
-                style: FilledButton.styleFrom(
-                  backgroundColor: buttonBgActive,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(64, 64),
-                  maximumSize: const Size(64, 64),
-                  padding: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16.0),
-                  ),
-                  elevation: 0.0,
-                ),
+                icon: const Icon(Icons.coffee_rounded, size: 28.0),
+                variant: IconButtonM3EVariant.filled,
+                size: IconButtonM3ESize.lg,
+                shape: IconButtonM3EShapeVariant.square,
               )
             else
-              FilledButton(
+              IconButtonM3E(
                 onPressed: () => provider.skipToClassicBreak(),
-                child: const Icon(Icons.skip_next_rounded, size: 28.0),
-                style: FilledButton.styleFrom(
-                  backgroundColor: buttonBgActive,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(64, 64),
-                  maximumSize: const Size(64, 64),
-                  padding: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16.0),
-                  ),
-                  elevation: 0.0,
-                ),
+                icon: const Icon(Icons.skip_next_rounded, size: 28.0),
+                variant: IconButtonM3EVariant.filled,
+                size: IconButtonM3ESize.lg,
+                shape: IconButtonM3EShapeVariant.square,
               )
           else if (isBreak)
-            FilledButton(
+            IconButtonM3E(
               onPressed: () => provider.resumeWorkEarly(),
-              child: const Icon(Icons.local_fire_department_rounded, size: 28.0),
-              style: FilledButton.styleFrom(
-                backgroundColor: buttonBgActive,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(64, 64),
-                maximumSize: const Size(64, 64),
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.0),
-                ),
-                elevation: 0.0,
-              ),
+              icon: const Icon(Icons.local_fire_department_rounded, size: 28.0),
+              variant: IconButtonM3EVariant.filled,
+              size: IconButtonM3ESize.lg,
+              shape: IconButtonM3EShapeVariant.square,
             ),
           const SizedBox(width: 8),
 
-          // 3. RIGHT Button: Pause/Resume Toggle (Symmetric rounded circle, inactive background, no glow)
-          IconButton(
+          // 3. RIGHT Button: Pause/Resume Toggle (M3E Tonal, round shape)
+          IconButtonM3E(
             onPressed: isPaused ? () => provider.resumeTimer() : () => provider.pauseTimer(),
             icon: Icon(isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 28.0),
-            style: IconButton.styleFrom(
-              backgroundColor: buttonBgInactive,
-              foregroundColor: primaryColor,
-              minimumSize: const Size(64, 64),
-              maximumSize: const Size(64, 64),
-              shape: const CircleBorder(),
-            ),
+            variant: IconButtonM3EVariant.tonal,
+            size: IconButtonM3ESize.lg,
+            shape: IconButtonM3EShapeVariant.round,
           ),
         ],
       ),
@@ -529,19 +494,12 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   Widget _buildStartButton(TimerProvider provider, ThemeData theme, Color primaryColor) {
-    // Compact, highly aesthetic symmetrical round play button (no text, zero navigation overlap)
-    return FilledButton(
+    return IconButtonM3E(
       onPressed: () => provider.startTimer(),
-      child: const Icon(Icons.play_arrow_rounded, size: 36.0),
-      style: FilledButton.styleFrom(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        minimumSize: const Size(64, 64),
-        maximumSize: const Size(64, 64),
-        padding: EdgeInsets.zero,
-        shape: const CircleBorder(),
-        elevation: 0.0,
-      ),
+      icon: const Icon(Icons.play_arrow_rounded, size: 36.0),
+      variant: IconButtonM3EVariant.filled,
+      size: IconButtonM3ESize.xl,
+      shape: IconButtonM3EShapeVariant.round,
     );
   }
 }

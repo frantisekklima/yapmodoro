@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:m3e_collection/m3e_collection.dart';
 import '../providers/timer_provider.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -117,23 +118,15 @@ class SettingsPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor.withOpacity(0.08),
-                            shadowColor: Colors.transparent,
-                            side: BorderSide(color: primaryColor.withOpacity(0.3), width: 1),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                            ),
-                          ),
-                          onPressed: isTimerActive
-                              ? null
-                              : () => _confirmResetSettings(context, provider, theme),
-                          child: Text(
+                        ButtonM3E(
+                          style: ButtonM3EStyle.tonal,
+                          size: ButtonM3ESize.md,
+                          shape: ButtonM3EShape.round,
+                          enabled: !isTimerActive,
+                          onPressed: () => _confirmResetSettings(context, provider, theme),
+                          label: const Text(
                             "RESET",
                             style: TextStyle(
-                              color: primaryColor,
-                              fontSize: 12.0,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.5,
                             ),
@@ -174,25 +167,25 @@ class SettingsPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: theme.colorScheme.error.withOpacity(0.08),
-                            shadowColor: Colors.transparent,
-                            side: BorderSide(color: theme.colorScheme.error.withOpacity(0.3), width: 1),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.0),
+                        Theme(
+                          data: theme.copyWith(
+                            colorScheme: theme.colorScheme.copyWith(
+                              secondaryContainer: theme.colorScheme.errorContainer,
+                              onSecondaryContainer: theme.colorScheme.onErrorContainer,
                             ),
                           ),
-                          onPressed: isTimerActive
-                              ? null
-                              : () => _confirmClearData(context, provider, theme),
-                          child: Text(
-                            "CLEAR",
-                            style: TextStyle(
-                              color: theme.colorScheme.error,
-                              fontSize: 12.0,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
+                          child: ButtonM3E(
+                            style: ButtonM3EStyle.tonal,
+                            size: ButtonM3ESize.md,
+                            shape: ButtonM3EShape.round,
+                            enabled: !isTimerActive,
+                            onPressed: () => _confirmClearData(context, provider, theme),
+                            label: const Text(
+                              "CLEAR",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
                         ),
@@ -632,33 +625,43 @@ class SettingsPage extends StatelessWidget {
             style: TextStyle(color: theme.colorScheme.onBackground.withOpacity(0.6), fontSize: 13.0, height: 1.4),
           ),
           actions: [
-            TextButton(
+            ButtonM3E(
+              style: ButtonM3EStyle.text,
+              size: ButtonM3ESize.sm,
+              shape: ButtonM3EShape.round,
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(
+              label: const Text(
                 "CANCEL",
-                style: TextStyle(color: theme.colorScheme.onBackground.withOpacity(0.4), fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.error,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            Theme(
+              data: theme.copyWith(
+                colorScheme: theme.colorScheme.copyWith(
+                  primary: theme.colorScheme.error,
+                  onPrimary: theme.colorScheme.onError,
+                ),
               ),
-              onPressed: () {
-                provider.clearAllData();
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text("All stats and history have been cleared."),
-                    backgroundColor: theme.colorScheme.error,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-                  ),
-                );
-              },
-              child: const Text(
-                "CLEAR STATS",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              child: ButtonM3E(
+                style: ButtonM3EStyle.filled,
+                size: ButtonM3ESize.sm,
+                shape: ButtonM3EShape.round,
+                onPressed: () {
+                  provider.clearAllData();
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text("All stats and history have been cleared."),
+                      backgroundColor: theme.colorScheme.error,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                    ),
+                  );
+                },
+                label: const Text(
+                  "CLEAR STATS",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],
@@ -689,18 +692,20 @@ class SettingsPage extends StatelessWidget {
             style: TextStyle(color: theme.colorScheme.onBackground.withOpacity(0.6), fontSize: 13.0, height: 1.4),
           ),
           actions: [
-            TextButton(
+            ButtonM3E(
+              style: ButtonM3EStyle.text,
+              size: ButtonM3ESize.sm,
+              shape: ButtonM3EShape.round,
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(
+              label: const Text(
                 "CANCEL",
-                style: TextStyle(color: theme.colorScheme.onBackground.withOpacity(0.4), fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-              ),
+            ButtonM3E(
+              style: ButtonM3EStyle.filled,
+              size: ButtonM3ESize.sm,
+              shape: ButtonM3EShape.round,
               onPressed: () {
                 provider.resetSettingsToDefault();
                 Navigator.of(context).pop();
@@ -713,9 +718,9 @@ class SettingsPage extends StatelessWidget {
                   ),
                 );
               },
-              child: const Text(
+              label: const Text(
                 "RESET",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -853,18 +858,20 @@ class SettingsPage extends StatelessWidget {
             ],
           ),
           actions: [
-            TextButton(
+            ButtonM3E(
+              style: ButtonM3EStyle.text,
+              size: ButtonM3ESize.sm,
+              shape: ButtonM3EShape.round,
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(
+              label: const Text(
                 "CANCEL",
-                style: TextStyle(color: theme.colorScheme.onBackground.withOpacity(0.5), fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-              ),
+            ButtonM3E(
+              style: ButtonM3EStyle.filled,
+              size: ButtonM3ESize.sm,
+              shape: ButtonM3EShape.round,
               onPressed: () {
                 final double? parsedVal = double.tryParse(controller.text);
                 if (parsedVal != null && parsedVal >= min && parsedVal <= max) {
@@ -881,9 +888,9 @@ class SettingsPage extends StatelessWidget {
                   );
                 }
               },
-              child: const Text(
+              label: const Text(
                 "SAVE",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ],
