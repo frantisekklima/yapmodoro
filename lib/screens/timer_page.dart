@@ -69,6 +69,8 @@ class _TimerPageState extends State<TimerPage> {
 
         final bool isIdle = currentTimerState == AppTimerState.idle;
 
+        final bool isDynamicFocus = currentTimerMode == AppTimerMode.dynamicMode && isWork;
+
         // Expressive Material 3 Dynamic Colors derived entirely from system settings
         final Color modePrimaryColor = isBreak ? _getBreakColor(theme) : theme.colorScheme.primary;
 
@@ -204,6 +206,10 @@ class _TimerPageState extends State<TimerPage> {
                       gradientColors: themeColors,
                       isWavy: isWavy,
                       strokeWidth: 12.0,
+                      targetTime: provider.segmentTargetTime,
+                      totalDurationSeconds: provider.totalDurationForCurrentSegment,
+                      isRunning: currentTimerState == AppTimerState.working || currentTimerState == AppTimerState.breakTime,
+                      isDynamicFocus: isDynamicFocus,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,

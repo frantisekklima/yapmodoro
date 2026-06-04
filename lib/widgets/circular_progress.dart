@@ -7,6 +7,10 @@ class CircularTimerProgress extends StatefulWidget {
   final double strokeWidth;
   final Widget? child;
   final bool isWavy; // Whether to render wavy squiggles (M3 Expressive)
+  final DateTime? targetTime;
+  final int totalDurationSeconds;
+  final bool isRunning;
+  final bool isDynamicFocus;
 
   const CircularTimerProgress({
     super.key,
@@ -15,6 +19,10 @@ class CircularTimerProgress extends StatefulWidget {
     this.strokeWidth = 12.0,
     this.child,
     this.isWavy = false,
+    this.targetTime,
+    this.totalDurationSeconds = 0,
+    this.isRunning = false,
+    this.isDynamicFocus = false,
   });
 
   @override
@@ -22,36 +30,38 @@ class CircularTimerProgress extends StatefulWidget {
 }
 
 class _CircularTimerProgressState extends State<CircularTimerProgress> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+  late AnimationController _phaseController;
 
   @override
   void initState() {
     super.initState();
-    // Continuous flowing wave animation driven by controller (for shifting wave phase)
-    _controller = AnimationController(
+    
+    // Controller for continuous flowing wave phase shift and high-resolution redraws
+    _phaseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 3600),
     );
-    if (widget.isWavy) {
-      _controller.repeat();
+    if (widget.isRunning) {
+      _phaseController.repeat();
     }
   }
 
   @override
   void didUpdateWidget(CircularTimerProgress oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isWavy != oldWidget.isWavy) {
-      if (widget.isWavy) {
-        _controller.repeat();
+    
+    if (widget.isRunning != oldWidget.isRunning) {
+      if (widget.isRunning) {
+        _phaseController.repeat();
       } else {
-        _controller.stop();
+        _phaseController.stop();
       }
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _phaseController.dispose();
     super.dispose();
   }
 
@@ -60,10 +70,21 @@ class _CircularTimerProgressState extends State<CircularTimerProgress> with Sing
     final theme = Theme.of(context);
 
     return AnimatedBuilder(
-      animation: _controller,
+      animation: _phaseController,
       builder: (context, child) {
-        // Dynamic wave phase shift (continuous flowing animation)
-        final double phase = widget.isWavy ? _controller.value * 2 * math.pi : 0.0;
+        final double phase = widget.isWavy ? _phaseController.value * 2 * math.pi : 0.0;
+
+        // Calculate smooth high-resolution progress in real-time
+        double smoothProgress = widget.progress;
+        if (widget.isRunning && widget.targetTime != null && widget.totalDurationSeconds > 0) {
+          final remainingMs = widget.targetTime!.difference(DateTime.now()).inMilliseconds;
+          if (remainingMs > 0) {
+            final totalMs = widget.totalDurationSeconds * 1000;
+            smoothProgress = ((totalMs - remainingMs) / totalMs).clamp(0.0, 1.0);
+          } else {
+            smoothProgress = 1.0;
+          }
+        }
 
         return AspectRatio(
           aspectRatio: 1.0,
@@ -73,12 +94,13 @@ class _CircularTimerProgressState extends State<CircularTimerProgress> with Sing
               CustomPaint(
                 size: Size.infinite,
                 painter: _CircularTimerExpressivePainter(
-                  progress: widget.progress,
+                  progress: smoothProgress,
                   gradientColors: widget.gradientColors,
                   strokeWidth: widget.strokeWidth,
                   isWavy: widget.isWavy,
                   phase: phase,
                   theme: theme,
+                  isDynamicFocus: widget.isDynamicFocus,
                 ),
               ),
               if (widget.child != null) widget.child!,
@@ -97,6 +119,7 @@ class _CircularTimerExpressivePainter extends CustomPainter {
   final bool isWavy;
   final double phase;
   final ThemeData theme;
+  final bool isDynamicFocus;
 
   _CircularTimerExpressivePainter({
     required this.progress,
@@ -105,6 +128,7 @@ class _CircularTimerExpressivePainter extends CustomPainter {
     required this.isWavy,
     required this.phase,
     required this.theme,
+    required this.isDynamicFocus,
   });
 
   @override
@@ -116,9 +140,8 @@ class _CircularTimerExpressivePainter extends CustomPainter {
     final trackColor = theme.colorScheme.onSurface.withOpacity(0.08);
     final Color activeColor = gradientColors.isNotEmpty ? gradientColors.first : theme.colorScheme.primary;
 
-    // Check if progress is <= 0 and we are NOT wavy (idle state)
+    // Static completely closed track ring when resting at zero progress
     if (progress <= 0.0 && !isWavy) {
-      // Draw standard solid closed background track ring
       final trackPaint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
@@ -128,33 +151,51 @@ class _CircularTimerExpressivePainter extends CustomPainter {
       return;
     }
 
-    // Determine active progress angle sweep (maximum 360 degrees)
     final double activeSweep = progress.clamp(0.0, 1.0) * math.pi * 2;
     
-    // STATIONARY Determinate Arc: fixed start at 12 o'clock (-pi / 2). No spinning!
-    final start = -math.pi / 2;
+    // Wave activates at 10% progress and stops at 90% progress (except for continuous Dynamic Focus at 1.0)
+    double waveFactor = 0.0;
+    if (isDynamicFocus) {
+      waveFactor = 1.0;
+    } else {
+      if (progress >= 0.10 && progress <= 0.90) {
+        waveFactor = 1.0;
+      }
+    }
+    
+    // Smooth circle opening track factors (0.0 to 0.05 progress window)
+    double openingFactor = (progress / 0.05).clamp(0.0, 1.0);
+    double closingFactor = ((1.0 - progress) / 0.05).clamp(0.0, 1.0);
+    double globalGapFactor = math.min(openingFactor, closingFactor);
+    
+    final start = -math.pi / 2; // Fixed 12 o'clock position
     final end = start + activeSweep;
 
-    // Proportional gap before & after active progress sweep (highly visible and balanced)
-    final gapDp = strokeWidth * 2.4;
+    final gapDp = strokeWidth * 1.2; // Halved gap size
     final gapAngle = gapDp / baseRadius; 
+    final currentGapAngle = gapAngle * globalGapFactor;
 
-    // 1. Draw Broken Background Track (Only if not a complete 360 degree sweep and there is room for the track)
-    final bool waveOnly = progress >= 1.0;
-    final double remainingSpace = math.pi * 2 - activeSweep - (gapAngle * 2);
-    if (!waveOnly && remainingSpace > 0) {
-      final trackPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round
-        ..isAntiAlias = true
-        ..color = trackColor;
+    // Angle displacement of a single rounded stroke cap
+    final capAngle = (strokeWidth / 2) / baseRadius;
+
+    // 1. Draw Broken Background Track with cap compensation for smooth opening
+    if (progress < 1.0) {
+      final double trackSweep = (math.pi * 2) - activeSweep - (4 * capAngle) - (currentGapAngle * 2);
       
-      final a1 = end + gapAngle;
-      canvas.drawArc(rect, a1, remainingSpace, false, trackPaint);
+      if (trackSweep > 0) {
+        final trackPaint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.round
+          ..isAntiAlias = true
+          ..color = trackColor;
+        
+        final trackStart = end + (2 * capAngle) + currentGapAngle;
+        canvas.drawArc(rect, trackStart, trackSweep, false, trackPaint);
+      }
     }
 
-    // 2. Draw Active Path
+    // 2. Draw Active Progress Path
     final activePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
@@ -162,13 +203,10 @@ class _CircularTimerExpressivePainter extends CustomPainter {
       ..isAntiAlias = true
       ..color = activeColor;
 
-    if (isWavy) {
-      // Refined waves for low-frequency elegant flow (Material 3 Expressive compliant)
-      final amp = 5.0; // Radial amplitude of squiggle (optimized for a visible but elegant wave)
-      final scallopLen = 46.0; // Wavelength proxy (increased for lower frequency, gentle curves)
-      final taperLen = scallopLen / 2; // Fade amplitude to zero at the end for clean closure
+    if (isWavy && waveFactor > 0.0) {
+      final amp = 5.0 * waveFactor; 
+      final scallopLen = 46.0; 
 
-      // Dynamic high-density steps to guarantee perfectly smooth, curved waves with zero sharp edges/aliasing
       final double arcLength = baseRadius * activeSweep;
       final int steps = math.max(360, (arcLength * 3.0).round());
       final path = Path();
@@ -176,7 +214,6 @@ class _CircularTimerExpressivePainter extends CustomPainter {
       final double totalArcLen = baseRadius * activeSweep;
       final bool isClosedCircle = progress >= 1.0;
 
-      // Adjust scallop length for closed circles to ensure a perfectly seamless loop
       double effectiveScallopLen = scallopLen;
       if (isClosedCircle) {
         final double numWaves = (totalArcLen / scallopLen).roundToDouble();
@@ -189,22 +226,9 @@ class _CircularTimerExpressivePainter extends CustomPainter {
         final t = i / steps;
         final ang = start + (end - start) * t;
         final arcLen = baseRadius * (ang - start);
-        final arcToEnd = baseRadius * (end - ang);
         
-        double taperFactor = 1.0;
-        if (!isClosedCircle) {
-          // Open arc: taper both start and end caps so they sit cleanly on baseRadius
-          final double distFromStart = arcLen;
-          final double distFromEnd = arcToEnd;
-          final double minDist = math.min(distFromStart, distFromEnd);
-          if (minDist < taperLen) {
-            final double tTaper = (minDist / taperLen).clamp(0.0, 1.0);
-            taperFactor = math.sin(tTaper * math.pi / 2);
-          }
-        }
-        
-        // Shifting wave phase continuously along the stationary progress arc
-        final r = baseRadius + (amp * taperFactor) * math.sin(arcLen / effectiveScallopLen * 2 * math.pi - phase);
+        // Uniform swinging endpoints
+        final r = baseRadius + amp * math.sin(arcLen / effectiveScallopLen * 2 * math.pi + phase);
         final p = Offset(center.dx + r * math.cos(ang), center.dy + r * math.sin(ang));
 
         if (i == 0) {
@@ -220,7 +244,7 @@ class _CircularTimerExpressivePainter extends CustomPainter {
 
       canvas.drawPath(path, activePaint);
     } else {
-      // Draw standard solid expressive rounded arc (Flat and clean, no spinning, no glows)
+      // Draw flat expressive rounded arc when outside the active wave windows
       canvas.drawArc(rect, start, activeSweep, false, activePaint);
     }
   }
@@ -232,6 +256,7 @@ class _CircularTimerExpressivePainter extends CustomPainter {
         oldDelegate.strokeWidth != strokeWidth ||
         oldDelegate.isWavy != isWavy ||
         oldDelegate.phase != phase ||
-        oldDelegate.theme != theme;
+        oldDelegate.theme != theme ||
+        oldDelegate.isDynamicFocus != isDynamicFocus;
   }
 }

@@ -63,6 +63,7 @@ class TimerProvider extends ChangeNotifier with WidgetsBindingObserver {
   int get remainingSeconds => _remainingSeconds;
   int get totalDurationForCurrentSegment => _totalDurationForCurrentSegment;
   int get classicWorkAdjustmentSeconds => _classicWorkAdjustmentSeconds;
+  DateTime? get segmentTargetTime => _segmentTargetTime;
 
   // Dynamic getter returning active mode sessional count
   int get currentFlowSessionIndex {
