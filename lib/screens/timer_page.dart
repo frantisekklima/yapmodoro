@@ -12,18 +12,14 @@ class TimerPage extends StatefulWidget {
 }
 
 class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
-  late final AnimationController _startClickController;
   late final AnimationController _leftClickController;
   late final AnimationController _centerClickController;
   late final AnimationController _rightClickController;
+  late final AnimationController _stateTransitionController;
 
   @override
   void initState() {
     super.initState();
-    _startClickController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
     _leftClickController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -36,25 +32,44 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
+    final state = TimerProvider.instance.state;
+    _stateTransitionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+      value: (state == AppTimerState.idle || state == AppTimerState.paused) ? 0.0 : 1.0,
+    );
+    TimerProvider.instance.addListener(_onTimerStateChanged);
   }
 
   @override
   void dispose() {
-    _startClickController.dispose();
     _leftClickController.dispose();
     _centerClickController.dispose();
     _rightClickController.dispose();
+    _stateTransitionController.dispose();
+    TimerProvider.instance.removeListener(_onTimerStateChanged);
     super.dispose();
+  }
+
+  void _onTimerStateChanged() {
+    if (!mounted) return;
+    final state = TimerProvider.instance.state;
+    final shouldBeCircle = state == AppTimerState.idle || state == AppTimerState.paused;
+    if (shouldBeCircle) {
+      if (_stateTransitionController.value > 0.0 && !_stateTransitionController.isDismissed) {
+        _stateTransitionController.reverse();
+      }
+    } else {
+      if (_stateTransitionController.value < 1.0 && !_stateTransitionController.isCompleted) {
+        _stateTransitionController.forward();
+      }
+    }
   }
 
   double _getBounceValue(AnimationController controller) {
     if (!controller.isAnimating) return 0.0;
     final t = controller.value;
     return math.sin(t * math.pi);
-  }
-
-  double get _startButtonScaleX {
-    return 1.0 + 0.15 * _getBounceValue(_startClickController);
   }
 
   double get _leftButtonScaleX {
@@ -93,32 +108,24 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
     if (_leftClickController.isAnimating) return;
     _leftClickController.forward(from: 0.0).then((_) {
       _leftClickController.reset();
-      action();
     });
+    action();
   }
 
   void _onCenterButtonPressed(VoidCallback action) {
     if (_centerClickController.isAnimating) return;
     _centerClickController.forward(from: 0.0).then((_) {
       _centerClickController.reset();
-      action();
     });
+    action();
   }
 
   void _onRightButtonPressed(VoidCallback action) {
     if (_rightClickController.isAnimating) return;
     _rightClickController.forward(from: 0.0).then((_) {
       _rightClickController.reset();
-      action();
     });
-  }
-
-  void _onStartButtonPressed(VoidCallback action) {
-    if (_startClickController.isAnimating) return;
-    _startClickController.forward(from: 0.0).then((_) {
-      _startClickController.reset();
-      action();
-    });
+    action();
   }
 
   String _formatDuration(int totalSeconds) {
@@ -540,14 +547,18 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
     required IconData iconData,
     required bool isFilled,
     required double scaleX,
-    required double baseSize,
+    required double baseWidth,
+    required double baseHeight,
     required IconButtonM3EShapeVariant shape,
     required Alignment alignment,
     required String position,
     required ThemeData theme,
+    double transitionValue = 1.0,
+    double widthMultiplier = 1.0,
+    bool enabled = true,
   }) {
-    final double width = baseSize * scaleX;
-    final double height = baseSize;
+    final double width = baseWidth * scaleX * widthMultiplier;
+    final double height = baseHeight;
 
     final Color bgColor = isFilled
         ? theme.colorScheme.primary
@@ -557,9 +568,9 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
         ? theme.colorScheme.onPrimary
         : theme.colorScheme.onSecondaryContainer;
 
-    return SizedBox(
-      width: baseSize,
-      height: baseSize,
+    final childWidget = SizedBox(
+      width: baseWidth * widthMultiplier,
+      height: baseHeight,
       child: OverflowBox(
         alignment: alignment,
         minWidth: 0.0,
@@ -582,6 +593,7 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
               leftValue: _getBounceValue(_leftClickController),
               centerValue: _getBounceValue(_centerClickController),
               rightValue: _getBounceValue(_rightClickController),
+              transitionValue: transitionValue,
             ),
             child: ClipPath(
               clipper: ExpressiveButtonClipper(
@@ -595,16 +607,30 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
                 leftValue: _getBounceValue(_leftClickController),
                 centerValue: _getBounceValue(_centerClickController),
                 rightValue: _getBounceValue(_rightClickController),
+                transitionValue: transitionValue,
               ),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: onPressed,
+                  onTap: enabled ? onPressed : null,
                   child: Center(
-                    child: Icon(
-                      iconData,
-                      color: iconColor,
-                      size: baseSize == 64.0 ? 36.0 : 28.0,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      transitionBuilder: (Widget child, Animation<double> animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: animation,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Icon(
+                        iconData,
+                        key: ValueKey(iconData),
+                        color: iconColor,
+                        size: 32.0,
+                      ),
                     ),
                   ),
                 ),
@@ -614,111 +640,116 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
         ),
       ),
     );
-  }
 
-  // M3 Expressive Symmetric Control Board (Left: circle Stop | Center: rectangular Action | Right: circle Pause)
-  Widget _buildControlBoard(TimerProvider provider, ThemeData theme, bool isIdle, bool isWork, bool isBreak, Color primaryColor) {
-    if (isIdle) {
-      return Column(
-        children: [
-          _buildStartButton(provider, theme, primaryColor),
-          const SizedBox(height: 12),
-        ],
+    if (!enabled) {
+      return Opacity(
+        opacity: 0.35,
+        child: childWidget,
       );
     }
+    return childWidget;
+  }
 
+  // M3 Expressive Control Board
+  Widget _buildControlBoard(TimerProvider provider, ThemeData theme, bool isIdle, bool isWork, bool isBreak, Color primaryColor) {
     final state = provider.state;
-    final isPaused = state == AppTimerState.paused;
+
+    final bool isClassic = provider.mode == AppTimerMode.classic;
+    final IconData rightIcon;
+    final VoidCallback rightAction;
+    final bool rightEnabled;
+
+    if (isClassic) {
+      final bool onBreak = state == AppTimerState.breakTime || (state == AppTimerState.paused && provider.pausedState == AppTimerState.breakTime);
+      rightIcon = onBreak ? Icons.local_fire_department_rounded : Icons.skip_next_rounded;
+      rightAction = onBreak
+          ? () => provider.resumeWorkEarly()
+          : () => provider.skipToClassicBreak();
+      rightEnabled = state != AppTimerState.idle;
+    } else {
+      // Dynamic Mode
+      final bool onBreak = state == AppTimerState.breakTime || (state == AppTimerState.paused && provider.pausedState == AppTimerState.breakTime);
+      rightIcon = onBreak ? Icons.local_fire_department_rounded : Icons.coffee_rounded;
+      rightAction = onBreak
+          ? () => provider.resumeWorkEarly()
+          : () => provider.triggerDynamicBreak();
+      rightEnabled = state != AppTimerState.idle && (onBreak || provider.elapsedSeconds > 0);
+    }
 
     return AnimatedBuilder(
       animation: Listenable.merge([
         _leftClickController,
         _centerClickController,
         _rightClickController,
+        _stateTransitionController,
       ]),
       builder: (context, child) {
+        final t = _stateTransitionController.value;
         return Container(
+          key: const ValueKey('control_board'),
           margin: const EdgeInsets.only(bottom: 24.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 1. LEFT Button: Stop (M3E Tonal, round shape)
+              // 1. LEFT Button: Reset (M3E Tonal, round shape)
               _buildExpressiveButton(
                 onPressed: () => _onLeftButtonPressed(() => provider.stopTimer()),
-                iconData: Icons.stop_rounded,
+                iconData: Icons.replay_rounded,
                 isFilled: false,
                 scaleX: _leftButtonScaleX,
-                baseSize: 56.0,
+                baseWidth: 64.0,
+                baseHeight: 64.0,
                 shape: IconButtonM3EShapeVariant.round,
                 alignment: Alignment.centerLeft,
                 position: 'left',
                 theme: theme,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
 
-              // 2. CENTER Button: Primary Action (M3E Filled, square shape)
+              // 2. CENTER Button: Play/Pause/Resume (M3E Filled, square shape morphing corner radius)
               _buildExpressiveButton(
                 onPressed: () => _onCenterButtonPressed(() {
-                  if (isWork) {
-                    if (provider.mode == AppTimerMode.dynamicMode) {
-                      provider.triggerDynamicBreak();
+                  if (provider.state == AppTimerState.idle) {
+                    provider.startTimer();
+                  } else {
+                    if (provider.state == AppTimerState.paused) {
+                      provider.resumeTimer();
                     } else {
-                      provider.skipToClassicBreak();
+                      provider.pauseTimer();
                     }
-                  } else if (isBreak) {
-                    provider.resumeWorkEarly();
                   }
                 }),
-                iconData: isWork
-                    ? (provider.mode == AppTimerMode.dynamicMode
-                        ? Icons.coffee_rounded
-                        : Icons.skip_next_rounded)
-                    : Icons.local_fire_department_rounded,
+                iconData: (provider.state == AppTimerState.idle || provider.state == AppTimerState.paused)
+                    ? Icons.play_arrow_rounded
+                    : Icons.pause_rounded,
                 isFilled: true,
                 scaleX: _centerButtonScaleX,
-                baseSize: 56.0,
+                baseWidth: 96.0,
+                baseHeight: 64.0,
                 shape: IconButtonM3EShapeVariant.square,
                 alignment: _centerButtonAlignment,
                 position: 'center',
                 theme: theme,
+                transitionValue: t,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
 
-              // 3. RIGHT Button: Pause/Resume Toggle (M3E Tonal, round shape)
+              // 3. RIGHT Button: Action/Skip/Break (M3E Tonal, round shape)
               _buildExpressiveButton(
-                onPressed: () => _onRightButtonPressed(
-                  isPaused ? () => provider.resumeTimer() : () => provider.pauseTimer(),
-                ),
-                iconData: isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                onPressed: () => _onRightButtonPressed(rightAction),
+                iconData: rightIcon,
                 isFilled: false,
                 scaleX: _rightButtonScaleX,
-                baseSize: 56.0,
+                baseWidth: 64.0,
+                baseHeight: 64.0,
                 shape: IconButtonM3EShapeVariant.round,
                 alignment: Alignment.centerRight,
                 position: 'right',
                 theme: theme,
+                enabled: rightEnabled,
               ),
             ],
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildStartButton(TimerProvider provider, ThemeData theme, Color primaryColor) {
-    return AnimatedBuilder(
-      animation: _startClickController,
-      builder: (context, child) {
-        return _buildExpressiveButton(
-          onPressed: () => _onStartButtonPressed(() => provider.startTimer()),
-          iconData: Icons.play_arrow_rounded,
-          isFilled: true,
-          scaleX: _startButtonScaleX,
-          baseSize: 64.0,
-          shape: IconButtonM3EShapeVariant.round,
-          alignment: Alignment.center,
-          position: 'start',
-          theme: theme,
         );
       },
     );
@@ -738,6 +769,7 @@ Path getExpressiveButtonPath({
   required double leftValue,
   required double centerValue,
   required double rightValue,
+  required double transitionValue,
   required Size size,
 }) {
   final path = Path();
@@ -770,10 +802,12 @@ Path getExpressiveButtonPath({
       ));
     }
   } else {
-    final double rBase = 16.0;
+    // Center button: morph corner radius from 32.0 (stadium circle) to 16.0 (rounded rectangle) based on transitionValue
+    final double rStadium = height / 2;
+    final double rCur = rStadium - (rStadium - 16.0) * transitionValue;
     path.addRRect(RRect.fromRectAndRadius(
       Rect.fromLTWH(0, 0, width, height),
-      Radius.circular(rBase),
+      Radius.circular(rCur),
     ));
   }
 
@@ -792,6 +826,7 @@ class ExpressiveButtonPainter extends CustomPainter {
   final double leftValue;
   final double centerValue;
   final double rightValue;
+  final double transitionValue;
 
   ExpressiveButtonPainter({
     required this.width,
@@ -805,6 +840,7 @@ class ExpressiveButtonPainter extends CustomPainter {
     required this.leftValue,
     required this.centerValue,
     required this.rightValue,
+    required this.transitionValue,
   });
 
   @override
@@ -825,6 +861,7 @@ class ExpressiveButtonPainter extends CustomPainter {
       leftValue: leftValue,
       centerValue: centerValue,
       rightValue: rightValue,
+      transitionValue: transitionValue,
       size: size,
     );
 
@@ -843,7 +880,8 @@ class ExpressiveButtonPainter extends CustomPainter {
         oldDelegate.isRightAnimating != isRightAnimating ||
         oldDelegate.leftValue != leftValue ||
         oldDelegate.centerValue != centerValue ||
-        oldDelegate.rightValue != rightValue;
+        oldDelegate.rightValue != rightValue ||
+        oldDelegate.transitionValue != transitionValue;
   }
 }
 
@@ -858,6 +896,7 @@ class ExpressiveButtonClipper extends CustomClipper<Path> {
   final double leftValue;
   final double centerValue;
   final double rightValue;
+  final double transitionValue;
 
   ExpressiveButtonClipper({
     required this.width,
@@ -870,6 +909,7 @@ class ExpressiveButtonClipper extends CustomClipper<Path> {
     required this.leftValue,
     required this.centerValue,
     required this.rightValue,
+    required this.transitionValue,
   });
 
   @override
@@ -885,6 +925,7 @@ class ExpressiveButtonClipper extends CustomClipper<Path> {
       leftValue: leftValue,
       centerValue: centerValue,
       rightValue: rightValue,
+      transitionValue: transitionValue,
       size: size,
     );
   }
@@ -900,6 +941,7 @@ class ExpressiveButtonClipper extends CustomClipper<Path> {
         oldClipper.isRightAnimating != isRightAnimating ||
         oldClipper.leftValue != leftValue ||
         oldClipper.centerValue != centerValue ||
-        oldClipper.rightValue != rightValue;
+        oldClipper.rightValue != rightValue ||
+        oldClipper.transitionValue != transitionValue;
   }
 }
