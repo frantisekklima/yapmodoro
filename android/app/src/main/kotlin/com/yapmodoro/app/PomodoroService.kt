@@ -77,7 +77,9 @@ class PomodoroService : Service() {
         }
 
         // 4. Schedule native completion logic (both in-app Handler and system AlarmManager)
-        scheduleCompletion(endTimeMillis, alarmTitle, alarmBody)
+        if (isCountdown) {
+            scheduleCompletion(endTimeMillis, alarmTitle, alarmBody)
+        }
 
         return START_REDELIVER_INTENT
     }
@@ -146,6 +148,7 @@ class PomodoroService : Service() {
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
     }
 
