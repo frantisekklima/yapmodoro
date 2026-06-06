@@ -16,6 +16,15 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
   late final AnimationController _centerClickController;
   late final AnimationController _rightClickController;
   late final AnimationController _stateTransitionController;
+  late final AnimationController _leftPressedController;
+  late final AnimationController _centerPressedController;
+  late final AnimationController _rightPressedController;
+  late final AnimationController _addClickController;
+  late final AnimationController _subtractClickController;
+  late final AnimationController _addPressedController;
+  late final AnimationController _subtractPressedController;
+  late final AnimationController _classicPressedController;
+  late final AnimationController _dynamicPressedController;
 
   @override
   void initState() {
@@ -38,6 +47,42 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 250),
       value: (state == AppTimerState.idle || state == AppTimerState.paused) ? 0.0 : 1.0,
     );
+    _leftPressedController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _centerPressedController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _rightPressedController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _addClickController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _subtractClickController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _addPressedController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _subtractPressedController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _classicPressedController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _dynamicPressedController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
     TimerProvider.instance.addListener(_onTimerStateChanged);
   }
 
@@ -47,6 +92,15 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
     _centerClickController.dispose();
     _rightClickController.dispose();
     _stateTransitionController.dispose();
+    _leftPressedController.dispose();
+    _centerPressedController.dispose();
+    _rightPressedController.dispose();
+    _addClickController.dispose();
+    _subtractClickController.dispose();
+    _addPressedController.dispose();
+    _subtractPressedController.dispose();
+    _classicPressedController.dispose();
+    _dynamicPressedController.dispose();
     TimerProvider.instance.removeListener(_onTimerStateChanged);
     super.dispose();
   }
@@ -72,40 +126,80 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
     return math.sin(t * math.pi);
   }
 
-  double get _leftButtonScaleX {
+  double _leftButtonScaleX(double pLeft, double pCenter) {
     double scale = 1.0;
     scale += 0.20 * _getBounceValue(_leftClickController);
     scale -= 0.15 * _getBounceValue(_centerClickController);
+    scale += 0.20 * pLeft;
+    scale -= 0.15 * pCenter;
     return scale;
   }
 
-  double get _rightButtonScaleX {
+  double _rightButtonScaleX(double pRight, double pCenter) {
     double scale = 1.0;
     scale += 0.20 * _getBounceValue(_rightClickController);
     scale -= 0.15 * _getBounceValue(_centerClickController);
+    scale += 0.20 * pRight;
+    scale -= 0.15 * pCenter;
     return scale;
   }
 
-  double get _centerButtonScaleX {
+  double _centerButtonScaleX(double pCenter, double pLeft, double pRight) {
     double scale = 1.0;
     scale += 0.22 * _getBounceValue(_centerClickController);
     scale -= 0.15 * _getBounceValue(_leftClickController);
     scale -= 0.15 * _getBounceValue(_rightClickController);
+    scale += 0.22 * pCenter;
+    scale -= 0.15 * pLeft;
+    scale -= 0.15 * pRight;
     return scale;
   }
 
-  Alignment get _centerButtonAlignment {
-    if (_leftClickController.isAnimating) {
-      return Alignment.centerRight;
+  double _addButtonScaleX(double pAdd) {
+    double scale = 1.0;
+    scale += 0.20 * _getBounceValue(_addClickController);
+    scale += 0.20 * pAdd;
+    return scale;
+  }
+
+  double _subtractButtonScaleX(double pSubtract) {
+    double scale = 1.0;
+    scale += 0.20 * _getBounceValue(_subtractClickController);
+    scale += 0.20 * pSubtract;
+    return scale;
+  }
+
+  void _onAddButtonPressed(VoidCallback action) {
+    _addClickController.forward(from: 0.0).then((_) {
+      _addClickController.reset();
+    });
+    action();
+  }
+
+  void _onSubtractButtonPressed(VoidCallback action) {
+    _subtractClickController.forward(from: 0.0).then((_) {
+      _subtractClickController.reset();
+    });
+    action();
+  }
+
+  Alignment _getCenterButtonAlignment({
+    required double scaleL,
+    required double scaleR,
+    required double scaleC,
+  }) {
+    final double wl = 64.0 * scaleL;
+    final double wr = 64.0 * scaleR;
+    final double wc = 96.0 * scaleC;
+    final double diff = 96.0 - wc;
+    if (diff.abs() < 1e-3) {
+      return Alignment.center;
     }
-    if (_rightClickController.isAnimating) {
-      return Alignment.centerLeft;
-    }
-    return Alignment.center;
+    final double alignmentX = (wl - wr) / diff;
+    return Alignment(alignmentX.clamp(-5.0, 5.0), 0.0);
   }
 
   void _onLeftButtonPressed(VoidCallback action) {
-    if (_leftClickController.isAnimating) return;
     _leftClickController.forward(from: 0.0).then((_) {
       _leftClickController.reset();
     });
@@ -113,7 +207,6 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
   }
 
   void _onCenterButtonPressed(VoidCallback action) {
-    if (_centerClickController.isAnimating) return;
     _centerClickController.forward(from: 0.0).then((_) {
       _centerClickController.reset();
     });
@@ -121,7 +214,6 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
   }
 
   void _onRightButtonPressed(VoidCallback action) {
-    if (_rightClickController.isAnimating) return;
     _rightClickController.forward(from: 0.0).then((_) {
       _rightClickController.reset();
     });
@@ -340,40 +432,70 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
                       totalDurationSeconds: provider.totalDurationForCurrentSegment,
                       isRunning: currentTimerState == AppTimerState.working || currentTimerState == AppTimerState.breakTime,
                       isDynamicFocus: isDynamicFocus,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (showAdjustButtons) ...[
-                            IconButtonM3E(
-                              onPressed: () => provider.addMinute(),
-                              icon: const Icon(Icons.add_rounded, size: 20.0),
-                              variant: IconButtonM3EVariant.tonal,
-                              size: IconButtonM3ESize.sm,
-                              shape: IconButtonM3EShapeVariant.round,
-                            ),
-                            const SizedBox(height: 6),
-                          ],
-                          Text(
-                            timerString,
-                            style: TextStyle(
-                              color: theme.colorScheme.onBackground,
-                              fontSize: 54.0,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -1.5,
-                            ),
-                          ),
-                          if (showAdjustButtons) ...[
-                            const SizedBox(height: 6),
-                            IconButtonM3E(
-                              onPressed: () => provider.subtractMinute(),
-                              icon: const Icon(Icons.remove_rounded, size: 20.0),
-                              variant: IconButtonM3EVariant.tonal,
-                              size: IconButtonM3ESize.sm,
-                              shape: IconButtonM3EShapeVariant.round,
-                            ),
-                          ],
-                        ],
+                      child: AnimatedBuilder(
+                        animation: Listenable.merge([
+                          _addClickController,
+                          _addPressedController,
+                          _subtractClickController,
+                          _subtractPressedController,
+                        ]),
+                        builder: (context, _) {
+                          final pAdd = _addPressedController.value;
+                          final pSubtract = _subtractPressedController.value;
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (showAdjustButtons) ...[
+                                _buildExpressiveButton(
+                                  onPressed: () => _onAddButtonPressed(() => provider.addMinute()),
+                                  iconData: Icons.add_rounded,
+                                  isFilled: false,
+                                  scaleX: _addButtonScaleX(pAdd),
+                                  baseWidth: 40.0,
+                                  baseHeight: 40.0,
+                                  shape: IconButtonM3EShapeVariant.round,
+                                  alignment: Alignment.center,
+                                  position: 'add',
+                                  theme: theme,
+                                  pressedValue: pAdd,
+                                  pressedController: _addPressedController,
+                                  iconSize: 20.0,
+                                  pressedRadius: 8.0,
+                                ),
+                                const SizedBox(height: 6),
+                              ],
+                              Text(
+                                timerString,
+                                style: TextStyle(
+                                  color: theme.colorScheme.onBackground,
+                                  fontSize: 54.0,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -1.5,
+                                ),
+                              ),
+                              if (showAdjustButtons) ...[
+                                const SizedBox(height: 6),
+                                _buildExpressiveButton(
+                                  onPressed: () => _onSubtractButtonPressed(() => provider.subtractMinute()),
+                                  iconData: Icons.remove_rounded,
+                                  isFilled: false,
+                                  scaleX: _subtractButtonScaleX(pSubtract),
+                                  baseWidth: 40.0,
+                                  baseHeight: 40.0,
+                                  shape: IconButtonM3EShapeVariant.round,
+                                  alignment: Alignment.center,
+                                  position: 'subtract',
+                                  theme: theme,
+                                  pressedValue: pSubtract,
+                                  pressedController: _subtractPressedController,
+                                  iconSize: 20.0,
+                                  pressedRadius: 8.0,
+                                ),
+                              ],
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -427,31 +549,41 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
   Widget _buildModeSwitcher(TimerProvider provider, bool isIdle, ThemeData theme, Color primaryColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildModeButton(
-            provider,
-            AppTimerMode.classic,
-            "Classic",
-            isIdle,
-            provider.mode == AppTimerMode.classic,
-            true, // isLeft = true
-            theme,
-            primaryColor,
-          ),
-          const SizedBox(width: 2),
-          _buildModeButton(
-            provider,
-            AppTimerMode.dynamicMode,
-            "Dynamic",
-            isIdle,
-            provider.mode == AppTimerMode.dynamicMode,
-            false, // isLeft = false
-            theme,
-            primaryColor,
-          ),
-        ],
+      child: AnimatedBuilder(
+        animation: Listenable.merge([
+          _classicPressedController,
+          _dynamicPressedController,
+        ]),
+        builder: (context, _) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildModeButton(
+                provider,
+                AppTimerMode.classic,
+                "Classic",
+                isIdle,
+                provider.mode == AppTimerMode.classic,
+                true, // isLeft = true
+                theme,
+                primaryColor,
+                _classicPressedController,
+              ),
+              const SizedBox(width: 2),
+              _buildModeButton(
+                provider,
+                AppTimerMode.dynamicMode,
+                "Dynamic",
+                isIdle,
+                provider.mode == AppTimerMode.dynamicMode,
+                false, // isLeft = false
+                theme,
+                primaryColor,
+                _dynamicPressedController,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -465,28 +597,28 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
     bool isLeft,
     ThemeData theme,
     Color primaryColor,
+    AnimationController pressedController,
   ) {
     final isDark = theme.brightness == Brightness.dark;
+    final double p = pressedController.value;
 
-    // Morphing BorderRadius:
-    // Selected button: fully rounded pill (28.0)
-    // Unselected left button: fully rounded outer (left) edge, partially rounded inner (right) edge
-    // Unselected right button: partially rounded inner (left) edge, fully rounded outer (right) edge
-    final BorderRadius borderRadius = isSelected
-        ? BorderRadius.circular(28.0)
-        : (isLeft
-            ? const BorderRadius.only(
-                topLeft: Radius.circular(28.0),
-                bottomLeft: Radius.circular(28.0),
-                topRight: Radius.circular(12.0),
-                bottomRight: Radius.circular(12.0),
-              )
-            : const BorderRadius.only(
-                topLeft: Radius.circular(12.0),
-                bottomLeft: Radius.circular(12.0),
-                topRight: Radius.circular(28.0),
-                bottomRight: Radius.circular(28.0),
-              ));
+    final double innerRadius = isSelected
+        ? 28.0 - (28.0 - 4.0) * p
+        : 8.0 - (8.0 - 4.0) * p;
+
+    final BorderRadius borderRadius = isLeft
+        ? BorderRadius.only(
+            topLeft: const Radius.circular(28.0),
+            bottomLeft: const Radius.circular(28.0),
+            topRight: Radius.circular(innerRadius),
+            bottomRight: Radius.circular(innerRadius),
+          )
+        : BorderRadius.only(
+            topLeft: Radius.circular(innerRadius),
+            bottomLeft: Radius.circular(innerRadius),
+            topRight: const Radius.circular(28.0),
+            bottomRight: const Radius.circular(28.0),
+          );
 
     // Dynamic backgrounds
     final Color bgColor = isSelected
@@ -502,40 +634,47 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
             ? primaryColor.withOpacity(0.85)
             : primaryColor.withOpacity(0.35));
 
-    return GestureDetector(
-      onTap: isIdle ? () => provider.setMode(targetMode) : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: borderRadius,
-        ),
-        child: AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isSelected) ...[
-                Icon(
-                  Icons.check_rounded,
-                  color: contentColor,
-                  size: 16.0,
-                ),
-                const SizedBox(width: 8.0),
-              ],
-              Text(
-                text,
-                style: TextStyle(
-                  color: contentColor,
-                  fontSize: 13.0,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: Material(
+        color: bgColor,
+        child: InkWell(
+          onTapDown: isIdle ? (_) => pressedController.forward() : null,
+          onTapCancel: isIdle ? () => pressedController.reverse() : null,
+          onTap: isIdle
+              ? () {
+                  pressedController.reverse();
+                  provider.setMode(targetMode);
+                }
+              : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isSelected) ...[
+                    Icon(
+                      Icons.check_rounded,
+                      color: contentColor,
+                      size: 16.0,
+                    ),
+                    const SizedBox(width: 8.0),
+                  ],
+                  Text(
+                    text,
+                    style: TextStyle(
+                      color: contentColor,
+                      fontSize: 13.0,
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -556,6 +695,11 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
     double transitionValue = 1.0,
     double widthMultiplier = 1.0,
     bool enabled = true,
+    double pressedValue = 0.0,
+    required AnimationController pressedController,
+    double centerPressedValue = 0.0,
+    double iconSize = 32.0,
+    double pressedRadius = 16.0,
   }) {
     final double width = baseWidth * scaleX * widthMultiplier;
     final double height = baseHeight;
@@ -594,6 +738,9 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
               centerValue: _getBounceValue(_centerClickController),
               rightValue: _getBounceValue(_rightClickController),
               transitionValue: transitionValue,
+              pressedValue: pressedValue,
+              centerPressedValue: centerPressedValue,
+              pressedRadius: pressedRadius,
             ),
             child: ClipPath(
               clipper: ExpressiveButtonClipper(
@@ -608,11 +755,21 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
                 centerValue: _getBounceValue(_centerClickController),
                 rightValue: _getBounceValue(_rightClickController),
                 transitionValue: transitionValue,
+                pressedValue: pressedValue,
+                centerPressedValue: centerPressedValue,
+                pressedRadius: pressedRadius,
               ),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: enabled ? onPressed : null,
+                  onTapDown: enabled ? (_) => pressedController.forward() : null,
+                  onTapCancel: enabled ? () => pressedController.reverse() : null,
+                  onTap: enabled
+                      ? () {
+                          pressedController.reverse();
+                          onPressed();
+                        }
+                      : null,
                   child: Center(
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
@@ -629,7 +786,7 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
                         iconData,
                         key: ValueKey(iconData),
                         color: iconColor,
-                        size: 32.0,
+                        size: iconSize,
                       ),
                     ),
                   ),
@@ -682,9 +839,15 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
         _centerClickController,
         _rightClickController,
         _stateTransitionController,
+        _leftPressedController,
+        _centerPressedController,
+        _rightPressedController,
       ]),
       builder: (context, child) {
         final t = _stateTransitionController.value;
+        final pLeft = _leftPressedController.value;
+        final pCenter = _centerPressedController.value;
+        final pRight = _rightPressedController.value;
         return Container(
           key: const ValueKey('control_board'),
           margin: const EdgeInsets.only(bottom: 24.0),
@@ -696,13 +859,16 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
                 onPressed: () => _onLeftButtonPressed(() => provider.stopTimer()),
                 iconData: Icons.replay_rounded,
                 isFilled: false,
-                scaleX: _leftButtonScaleX,
+                scaleX: _leftButtonScaleX(pLeft, pCenter),
                 baseWidth: 64.0,
                 baseHeight: 64.0,
                 shape: IconButtonM3EShapeVariant.round,
                 alignment: Alignment.centerLeft,
                 position: 'left',
                 theme: theme,
+                pressedValue: pLeft,
+                pressedController: _leftPressedController,
+                centerPressedValue: pCenter,
               ),
               const SizedBox(width: 12),
 
@@ -723,14 +889,20 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
                     ? Icons.play_arrow_rounded
                     : Icons.pause_rounded,
                 isFilled: true,
-                scaleX: _centerButtonScaleX,
+                scaleX: _centerButtonScaleX(pCenter, pLeft, pRight),
                 baseWidth: 96.0,
                 baseHeight: 64.0,
                 shape: IconButtonM3EShapeVariant.square,
-                alignment: _centerButtonAlignment,
+                alignment: _getCenterButtonAlignment(
+                  scaleL: _leftButtonScaleX(pLeft, pCenter),
+                  scaleR: _rightButtonScaleX(pRight, pCenter),
+                  scaleC: _centerButtonScaleX(pCenter, pLeft, pRight),
+                ),
                 position: 'center',
                 theme: theme,
                 transitionValue: t,
+                pressedValue: pCenter,
+                pressedController: _centerPressedController,
               ),
               const SizedBox(width: 12),
 
@@ -739,7 +911,7 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
                 onPressed: () => _onRightButtonPressed(rightAction),
                 iconData: rightIcon,
                 isFilled: false,
-                scaleX: _rightButtonScaleX,
+                scaleX: _rightButtonScaleX(pRight, pCenter),
                 baseWidth: 64.0,
                 baseHeight: 64.0,
                 shape: IconButtonM3EShapeVariant.round,
@@ -747,6 +919,9 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
                 position: 'right',
                 theme: theme,
                 enabled: rightEnabled,
+                pressedValue: pRight,
+                pressedController: _rightPressedController,
+                centerPressedValue: pCenter,
               ),
             ],
           ),
@@ -770,23 +945,30 @@ Path getExpressiveButtonPath({
   required double centerValue,
   required double rightValue,
   required double transitionValue,
+  required double pressedValue,
   required Size size,
+  double centerPressedValue = 0.0,
+  double pressedRadius = 16.0,
 }) {
   final path = Path();
 
   if (shape == IconButtonM3EShapeVariant.round) {
-    final double rBase = height / 2; // 28.0
+    // Round shape (Left/Right buttons, and Center button when idle/paused in stadium shape)
+    // Base radius is height / 2 (32.0). Under pressed state, it morphs to pressedRadius.
+    final double rBase = height / 2; // 32.0
+    final double rBaseCur = rBase - (rBase - pressedRadius) * pressedValue;
 
     if (position == 'left' || position == 'right') {
       if (width >= height) {
         path.addRRect(RRect.fromRectAndRadius(
           Rect.fromLTWH(0, 0, width, height),
-          Radius.circular(rBase),
+          Radius.circular(rBaseCur),
         ));
       } else {
         // Squishing: corner radius decreases vertically to create flat sides, while matching width horizontally to keep top/bottom normally curved
         final double rx = width / 2;
-        final double ry = rBase - (rBase - 20.0) * centerValue;
+        final double centerSquish = (centerValue + centerPressedValue).clamp(0.0, 1.0);
+        final double ry = rBaseCur - (rBaseCur - 20.0) * centerSquish;
         path.addRRect(RRect.fromRectAndCorners(
           Rect.fromLTWH(0, 0, width, height),
           topLeft: Radius.elliptical(rx, ry),
@@ -798,13 +980,19 @@ Path getExpressiveButtonPath({
     } else {
       path.addRRect(RRect.fromRectAndRadius(
         Rect.fromLTWH(0, 0, width, height),
-        Radius.circular(rBase),
+        Radius.circular(rBaseCur),
       ));
     }
   } else {
-    // Center button: morph corner radius from 32.0 (stadium circle) to 16.0 (rounded rectangle) based on transitionValue
-    final double rStadium = height / 2;
-    final double rCur = rStadium - (rStadium - 16.0) * transitionValue;
+    // Center button (Square shape):
+    // Unpressed active shape has a radius of 16.0.
+    // When transitionValue is 0.0 (idle/paused), unpressed is 32.0.
+    // When transitionValue is 1.0 (active), unpressed is 16.0.
+    // Pressed radius is pressedRadius (defaults to 16.0).
+    final double rUnpressed = 32.0 - (32.0 - 16.0) * transitionValue;
+    final double rPressed = pressedRadius;
+    final double rCur = rUnpressed - (rUnpressed - rPressed) * pressedValue;
+
     path.addRRect(RRect.fromRectAndRadius(
       Rect.fromLTWH(0, 0, width, height),
       Radius.circular(rCur),
@@ -827,6 +1015,9 @@ class ExpressiveButtonPainter extends CustomPainter {
   final double centerValue;
   final double rightValue;
   final double transitionValue;
+  final double pressedValue;
+  final double centerPressedValue;
+  final double pressedRadius;
 
   ExpressiveButtonPainter({
     required this.width,
@@ -841,6 +1032,9 @@ class ExpressiveButtonPainter extends CustomPainter {
     required this.centerValue,
     required this.rightValue,
     required this.transitionValue,
+    required this.pressedValue,
+    this.centerPressedValue = 0.0,
+    this.pressedRadius = 16.0,
   });
 
   @override
@@ -862,7 +1056,10 @@ class ExpressiveButtonPainter extends CustomPainter {
       centerValue: centerValue,
       rightValue: rightValue,
       transitionValue: transitionValue,
+      pressedValue: pressedValue,
       size: size,
+      centerPressedValue: centerPressedValue,
+      pressedRadius: pressedRadius,
     );
 
     canvas.drawPath(path, paint);
@@ -881,7 +1078,10 @@ class ExpressiveButtonPainter extends CustomPainter {
         oldDelegate.leftValue != leftValue ||
         oldDelegate.centerValue != centerValue ||
         oldDelegate.rightValue != rightValue ||
-        oldDelegate.transitionValue != transitionValue;
+        oldDelegate.transitionValue != transitionValue ||
+        oldDelegate.pressedValue != pressedValue ||
+        oldDelegate.centerPressedValue != centerPressedValue ||
+        oldDelegate.pressedRadius != pressedRadius;
   }
 }
 
@@ -897,6 +1097,9 @@ class ExpressiveButtonClipper extends CustomClipper<Path> {
   final double centerValue;
   final double rightValue;
   final double transitionValue;
+  final double pressedValue;
+  final double centerPressedValue;
+  final double pressedRadius;
 
   ExpressiveButtonClipper({
     required this.width,
@@ -910,6 +1113,9 @@ class ExpressiveButtonClipper extends CustomClipper<Path> {
     required this.centerValue,
     required this.rightValue,
     required this.transitionValue,
+    required this.pressedValue,
+    this.centerPressedValue = 0.0,
+    this.pressedRadius = 16.0,
   });
 
   @override
@@ -926,7 +1132,10 @@ class ExpressiveButtonClipper extends CustomClipper<Path> {
       centerValue: centerValue,
       rightValue: rightValue,
       transitionValue: transitionValue,
+      pressedValue: pressedValue,
       size: size,
+      centerPressedValue: centerPressedValue,
+      pressedRadius: pressedRadius,
     );
   }
 
@@ -942,6 +1151,9 @@ class ExpressiveButtonClipper extends CustomClipper<Path> {
         oldClipper.leftValue != leftValue ||
         oldClipper.centerValue != centerValue ||
         oldClipper.rightValue != rightValue ||
-        oldClipper.transitionValue != transitionValue;
+        oldClipper.transitionValue != transitionValue ||
+        oldClipper.pressedValue != pressedValue ||
+        oldClipper.centerPressedValue != centerPressedValue ||
+        oldClipper.pressedRadius != pressedRadius;
   }
 }
